@@ -1,0 +1,56 @@
+{{define "head"}}
+<title>{{.title}}</title>
+{{end}}
+
+
+{{define "content"}}
+<style>
+.iot {
+    width: 500px;
+    border-collapse: collapse;
+}
+
+.iot td {
+        border: 1px solid black;
+    }
+
+.iot tr:nth-child(even) {
+        background-color: #E4FFB7;
+    }
+
+.iot tr:nth-child(odd) {
+         background-color: #EFFFD2;
+    }
+
+
+.header {
+    text-align: center;
+    font-weight: bolder;
+    background-color: #80B327;
+    color: white;
+}
+</style>
+<div class="shadow-lg p-3 mb-5 bg-white rounded">
+    <h1 class="display-4">Smart Home!</h1>
+    <img src="/static/img/IOT.jpg" alt="iot">
+    <p class="py-3">Thu ăn măng trúc, đông ăn giá. Xuân thưa ba má, hạ cưới em!</p>
+    <hr class="my-4">
+    <table class= "iot">
+        <tbody><tr>
+            <td class="header" colspan="6">IOT 2021</td>
+        </tr>
+        <tr class="mainRow">
+            <td>Flight</td>
+            <td>Temperature</td>
+            <td>Humidity</td>
+            <td>Date</td>
+        </tr>
+        <tr class="data">
+            <td>{{.answer1}}</td>
+            <td>{{.answer2}}</td>
+            <td>{{.answer3}}</td>
+            <td>{{.answer4}}</td>
+        </tr>
+    </table>
+</div>
+{{end}}

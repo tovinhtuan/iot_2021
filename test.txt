@@ -1,0 +1,69 @@
+package main
+
+import (
+	"time"
+
+	// "iot-project/db/model"
+	"iot-project/db/repository"
+	"iot-project/db/storage"
+	"iot-project/mqtt-go"
+	"log"
+	"net/http"
+
+	// "time"
+
+	rice "github.com/GeertJohan/go.rice"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
+	gintemplate "github.com/foolin/gin-template"
+	"github.com/foolin/gin-template/supports/gorice"
+	"github.com/gin-gonic/gin"
+)
+
+func main() {
+	//Connect mqtt broker and execute topic subscribe
+	opts := mqtt.NewClientOptions()
+	client, err := mqtt_go.ConnectMQTTBroker(opts)
+	if err != nil {
+		log.Printf("Error connect broker: %v\n" ,err)
+	}
+	mqtt_go.Sub(*client)
+	mqtt_go.Publish(*client)
+	(*client).Disconnect(250)
+	//Connect MYSQL/PostgresSQL , insert&& read record
+	router := gin.Default()
+	router.HTMLRender = gintemplate.Default()
+	staticBox := rice.MustFindBox("static")
+	router.StaticFS("/static", staticBox.HTTPBox())
+	router.HTMLRender = gorice.New(rice.MustFindBox("views"))
+	go func() {
+		psqlDB, err := storage.NewPSQLManager()
+		if err != nil {
+			log.Fatalf("Error when connecting database, err: %v", err)
+		}
+		defer psqlDB.Close()
+		for {
+			sensorRepository := repository.NewSensorRepository(psqlDB)
+				t := time.Now().Format("2006-01-02 15:04")
+				currentTime, _ := time.Parse("2006-01-02 15:04", t)
+				data, err := sensorRepository.GetSensorByTime(currentTime)
+				if err != nil {
+					log.Fatalf("Error when get sensor database, err: %v", err)
+				}
+				// fmt.Println(data)
+				//Create HTTP server
+	
+				router.GET("/", func(c *gin.Context){
+					c.HTML(http.StatusOK, "index", gin.H{
+						"title": "Smart Home",
+						"answer1": data.Flight,
+						"answer2": data.Temperature,
+						"answer3": data.Humidity,
+						"answer4": data.UpdatedAt.Format("2006-01-02 15:04"),
+					})
+				})
+		}
+	}()
+	router.Run(":9090")
+	time.Sleep(time.Hour)
+}
+
