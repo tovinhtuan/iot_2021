@@ -12,6 +12,7 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"gopkg.in/robfig/cron.v2"
 )
 
 var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
@@ -59,7 +60,7 @@ var (
 	username = "emqx"
 	clientId = "go_mqtt_client"
 	password = "public"
-	topic    = "tuan"
+	topic    = "test"
 )
 
 func ConnectMQTTBroker(opts *mqtt.ClientOptions) (*mqtt.Client, error) {
@@ -74,6 +75,10 @@ func ConnectMQTTBroker(opts *mqtt.ClientOptions) (*mqtt.Client, error) {
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		return nil, token.Error()
 	}
+	// if token := client.Subscribe(topic, 0, nil); token.Wait() && token.Error() != nil {
+	// 	fmt.Println(token.Error())
+	// 	os.Exit(1)
+	// }
 	return &client, nil
 }
 func Sub(client mqtt.Client) {
@@ -81,30 +86,36 @@ func Sub(client mqtt.Client) {
 	token.Wait()
 	fmt.Printf("Subscribed to topic: %s\n", topic)
 }
-func Publish(client mqtt.Client) {
-	num := 2
-	layout := "2006-01-02 15:04"
-	for i := 0; i < num; i++ {
-		timeSend := time.Now().Format("2006-01-02 15:04")
-		t, err := time.Parse(layout, timeSend)
-
-		if err != nil {
-			fmt.Println(err)
+func Publish(c *cron.Cron, client mqtt.Client) {
+	test := make(chan int)
+	c.AddFunc("@every 0h0m4s", func() {
+		fmt.Println("voday")
+		num := 1
+		layout := "2006-01-02 15:04"
+		for i := 0; i < num; i++ {
+			timeSend := time.Now().Format("2006-01-02 15:04")
+			t, err := time.Parse(layout, timeSend)
+	
+			if err != nil {
+				fmt.Println(err)
+			}
+			sensor := model.Sensor{
+				Flight:      false,
+				Temperature: -10.0 + rand.Float64()*(100.0-(-10.0)),
+				Humidity:    0.0 + rand.Float64()*(100.0-0),
+				CreatedAt:   t,
+				UpdatedAt:   t,
+			}
+			messageJSON, err := json.Marshal(sensor)
+			if err != nil {
+				log.Printf("Error marshal sensor:%v\n", err)
+				os.Exit(1)
+			}
+			token := client.Publish(topic, 0, false, messageJSON)
+			token.Wait()
+			time.Sleep(time.Second * 10)
 		}
-		sensor := model.Sensor{
-			Flight:      false,
-			Temperature: -10.0 + rand.Float64()*(100.0-(-10.0)),
-			Humidity:    0.0 + rand.Float64()*(100.0-0),
-			CreatedAt:   t,
-			UpdatedAt:   t,
-		}
-		messageJSON, err := json.Marshal(sensor)
-		if err != nil {
-			log.Printf("Error marshal sensor:%v\n", err)
-			os.Exit(1)
-		}
-		token := client.Publish(topic, 0, false, messageJSON)
-		token.Wait()
-		time.Sleep(time.Second * 10)
-	}
+	})
+	c.Start()
+	<-test
 }
